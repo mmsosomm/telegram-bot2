@@ -1,5 +1,9 @@
 name: Telegram Bot Runner
 
+concurrency:
+  group: telegram-bot-runner
+  cancel-in-progress: true  # تلغي النسخة القديمة فوراً لتجنب تعارض البوت
+
 on:
   schedule:
     - cron: '0 */5 * * *'
