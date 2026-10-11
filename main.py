@@ -1,44 +1,104 @@
-import asyncio
 import os
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message
+import asyncio
 
-# بيانات البوت مباشرة
-BOT_TOKEN = "8425517768:AAF5iDn8rMmGqMVjRJf1gWFl-7tU64lGEcU"
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 
-MY_CHANNEL = '@test99sw'
+# بيانات الحساب الشخصي والبوت
+API_ID = int(os.environ["API_ID"])
+API_HASH = os.environ["API_HASH"]
+STRING_SESSION = os.environ["STRING_SESSION"]
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+
+# القناة المستقبلة
+MY_CHANNEL = "@test99sw"
+
+# الكلمات المفتاحية
 KEYWORDS = ["TP", "SL", "Gold buy", "Gold sell"]
-SOURCE_CHANNELS = [-1001234567890, -1009876543210] # يمكنك وضع آيدي القنوات أو معرفاتها إذا كانت عامة
-# أو استخدام المعرفات النصية العامة هكذا:
-SOURCE_CHANNEL_USERNAMES = ['ssww334455', 'NeymarGoldTrader', 'xauusdgoldsignalscn']
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+# القنوات المراقبة
+SOURCE_CHANNELS = [
+    "@ssww334455",
+    "@NeymarGoldTrader",
+    "@xauusdgoldsignalscn",
+]
 
-@dp.message(F.chat.username.in_(SOURCE_CHANNEL_USERNAMES))
-async def handle_forwarded_messages(message: Message):
-    message_text = message.text or message.caption or ""
-    
-    if any(word in message_text for word in KEYWORDS):
+# العميل الأول: حسابك الشخصي لمراقبة القنوات
+user_client = TelegramClient(
+    StringSession(STRING_SESSION),
+    API_ID,
+    API_HASH
+)
+
+# العميل الثاني: البوت لإرسال الرسائل
+bot_client = TelegramClient(
+    "bot_session",
+    API_ID,
+    API_HASH
+)
+
+
+@user_client.on(events.NewMessage(chats=SOURCE_CHANNELS))
+async def my_event_handler(event):
+    message_text = event.raw_text or ""
+
+    # التحقق من الكلمات المفتاحية دون حساسية لحالة الأحرف
+    if not any(word.lower() in message_text.lower() for word in KEYWORDS):
+        return
+
+    try:
+        # الحصول على اسم القناة المصدرية
         try:
-            # إضافة اسم القناة المصدر
-            chat_title = message.chat.title or "غير معروف"
-            message_text += f"\n\n📢 المصدر: {chat_title}"
-            
-            # إرسال الرسالة إلى قناتك المستقبلة مع ضمان ظهور الصوت
-            await bot.send_message(
-                chat_id=MY_CHANNEL,
-                text=message_text,
-                disable_notification=False  # لضمان ظهور الصوت
-            )
-            print("🟢 تم إرسال الرسالة بنجاح بواسطة البوت الرسمي وبصوت!")
-        except Exception as e:
-            print(f"❌ حدث خطأ أثناء الإرسال: {e}")
+            chat = await event.get_chat()
+            channel_name = getattr(chat, "title", None) or "غير معروف"
+        except Exception:
+            channel_name = "غير معروف"
+
+        # إضافة اسم المصدر إلى الرسالة
+        message_text += f"\n\n📢 المصدر: {channel_name}"
+
+        # النشر بواسطة البوت بدل الحساب الشخصي
+        await bot_client.send_message(
+            MY_CHANNEL,
+            message_text,
+            silent=False
+        )
+
+        print(
+            f"🟢 تم نشر الرسالة من {channel_name} "
+            "بواسطة البوت بنجاح!"
+        )
+
+    except Exception as e:
+        print(f"❌ حدث خطأ أثناء معالجة الرسالة: {e}")
+
 
 async def main():
-    print("🟢 جاري تشغيل البوت الرسمي عبر aiogram بدون أي طلبات إدخال...")
-    # بدء استقبال الرسائل
-    await dp.start_polling(bot)
+    try:
+        # الاتصال بالحساب الشخصي باستخدام الجلسة المحفوظة
+        await user_client.start()
+        print("🟢 تم الاتصال بالحساب الشخصي.")
+
+        # تشغيل البوت مباشرة باستخدام التوكن
+        await bot_client.start(bot_token=BOT_TOKEN)
+        print("🟢 تم الاتصال بالبوت بنجاح.")
+
+        print("👀 بدأت مراقبة القنوات المصدرية.")
+
+        # إبقاء العميلين متصلين
+        await asyncio.gather(
+            user_client.run_until_disconnected(),
+            bot_client.run_until_disconnected()
+        )
+
+    except Exception as e:
+        print(f"❌ خطأ في تشغيل النظام: {e}")
+        raise
+
+    finally:
+        await user_client.disconnect()
+        await bot_client.disconnect()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
