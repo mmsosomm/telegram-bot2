@@ -21,6 +21,8 @@ SOURCE_CHANNELS = [
     "@ssww334455",
     "@NeymarGoldTrader",
     "@xauusdgoldsignalscn",
+    "@xtremegoldsignals",
+    "@gold_vip_forex_xauusd_trade",
 ]
 
 # العميل الأول: حسابك الشخصي لمراقبة القنوات
