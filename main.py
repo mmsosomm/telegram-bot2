@@ -84,7 +84,10 @@ async def main():
         # تشغيل البوت مباشرة باستخدام التوكن
         await bot_client.start(bot_token=BOT_TOKEN)
         print("🟢 تم الاتصال بالبوت بنجاح.")
-
+except errors.FloodWaitError as e:
+        print(f"⚠️ حظر مؤقت من تيليجرام! يجب الانتظار لمدة {e.seconds} ثانية...")
+        await asyncio.sleep(e.seconds + 5)  # الانتظار التلقائي ثم المحاولة مجدداً
+        await bot_client.start(bot_token=BOT_TOKEN)
         print("👀 بدأت مراقبة القنوات المصدرية.")
 
         # إبقاء العميلين متصلين
